@@ -1,5 +1,7 @@
 #pragma once
 //#include "DataCapture.h"
+#include  <string>
+
 struct GigEclientPropStruct
 {
 	int camCnt;
@@ -10,7 +12,10 @@ struct GigEclientPropStruct
 	unsigned long long MACaddr;
 	int width;
 	int height;
+	std::string str_pcIP;
+	std::string str_camIP;
 };
+
 class GigEclientProp
 {
 public:
@@ -38,5 +43,7 @@ private:
 	int packetSize;
 	int interval_time;
 	unsigned long MACaddr;
+	std::string str_pcIP;
+	std::string str_camIP;
 };
 

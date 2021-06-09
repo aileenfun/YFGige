@@ -1,6 +1,5 @@
 // UsbControlDlg.cpp : 实现文件
 //
-
 #include "stdafx.h"
 #include "UsbControl.h"	
 #include "UsbControlDlg.h"
@@ -31,6 +30,8 @@ int board1=-1;//board id
 int board2=-1;
 int board3 = -1;
 int board4 = -1;
+int g_width = 0;
+int g_height = 0;
 #ifdef _W640
 int g_width=640;
 int g_height=480;
@@ -48,6 +49,9 @@ unsigned long lastLostCnt=0;
 int f_softtirg=0;
 int f_hardtrig = 0;
 unsigned int g_camsize = 1;
+
+#define  WM_SHOWTASK (WM_USER + 1)
+
 class CAboutDlg : public CDialog
 {
 public:
@@ -76,13 +80,77 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 	ON_WM_TIMER()
+	
 END_MESSAGE_MAP()
 
 
 // CUsbControlDlg 对话框
 
 
+LRESULT  CUsbControlDlg::OnShowTask(WPARAM wParam, LPARAM lParam)
+{
+	if (wParam != IDR_MAINFRAME)
+	{
+		return 1;
+	}
+	switch (lParam)
+	{
+	case WM_RBUTTONUP://右键起来时弹出快捷菜单，这里只有一个关闭
+	{
+		LPPOINT lpoint = new tagPOINT;
+		::GetCursorPos(lpoint);//得到鼠标位置
+		CMenu menu;
+		menu.CreatePopupMenu();//声明一个弹出式菜单
+		//增加菜单项“关闭”，点击则发送消息WM_DESTROY给主窗口（已
+		//隐藏），将程序结束。
+		menu.AppendMenu(MF_STRING, WM_DESTROY, _T("退出"));
+		//确定弹出式菜单的位置
+		menu.TrackPopupMenu(TPM_LEFTALIGN, lpoint->x, lpoint->y, this);
+		//资源回收
+		HMENU hmenu = menu.Detach();
+		menu.DestroyMenu();
+		delete lpoint;
+	}
+	break;
+	case WM_LBUTTONDBLCLK://双击左键的处理
+	{
+		this->ShowWindow(SW_SHOW);//简单的显示主窗口
+		this->ShowWindow(SW_RESTORE);
+		DeleteTray();
+	}
+	break;
+	default:
+		break;
+	}
+	return 0;
+}
+void CUsbControlDlg::DeleteTray()
+{
 
+	NOTIFYICONDATA nid;
+	nid.cbSize = (DWORD)sizeof(NOTIFYICONDATA);
+	nid.hWnd = this->m_hWnd;
+	nid.uID = IDR_MAINFRAME;
+	nid.uFlags = NIF_ICON /*| NIF_MESSAGE | NIF_TIP*/;
+	//nid.uCallbackMessage = WM_SHOWTASK;//自定义的消息名称
+	//nid.hIcon = LoadIcon(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_MAINFRAME));
+	//wcscpy_s(nid.szTip, _T("***程序"));//信息提示条为“按计划任务提醒”
+	Shell_NotifyIcon(NIM_DELETE, &nid);//在托盘中删除图标
+}
+
+void CUsbControlDlg::ToTray(void)
+{
+	NOTIFYICONDATA nid;
+	nid.cbSize = (DWORD)sizeof(NOTIFYICONDATA);
+	nid.hWnd = this->m_hWnd;
+	nid.uID = IDR_MAINFRAME;
+	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+	nid.uCallbackMessage = WM_SHOWTASK;//自定义的消息名称
+	nid.hIcon = LoadIcon(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_MAINFRAME));
+	wcscpy_s(nid.szTip, _T("***程序"));//信息提示条
+	Shell_NotifyIcon(NIM_ADD, &nid);//在托盘区添加图标
+	ShowWindow(SW_HIDE);//隐藏主窗口
+}
 
 CUsbControlDlg::CUsbControlDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CUsbControlDlg::IDD, pParent)
@@ -123,6 +191,8 @@ CUsbControlDlg::CUsbControlDlg(CWnd* pParent /*=NULL*/)
 	lastFrameCnt4 = 0;
 
 	cameralist = new map_camera();
+	
+
 }
 
 CUsbControlDlg::~CUsbControlDlg()
@@ -137,34 +207,34 @@ CUsbControlDlg::~CUsbControlDlg()
 void CUsbControlDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	DDX_Radio(pDX, IDC_RADIO_NORMAL, m_iProcType);
-	DDX_Control(pDX, IDC_COMBO_CHANNEL, select_channel);
+	//DDX_Radio(pDX, IDC_RADIO_NORMAL, m_iProcType);
+	//DDX_Control(pDX, IDC_COMBO_CHANNEL, select_channel);
 	DDX_Control(pDX, IDC_CHECK_SAVE, check_save_file);
-	DDX_Control(pDX, IDC_EDIT_EXPO, m_eEXPO);
-	DDX_Control(pDX, IDC_EDIT_GAIN, m_eGAIN);
+	//DDX_Control(pDX, IDC_EDIT_EXPO, m_eEXPO);
+	//DDX_Control(pDX, IDC_EDIT_GAIN, m_eGAIN);
 	DDX_Control(pDX, IDC_IPADDRESS_CAM, m_eCAMIP);
 	DDX_Control(pDX, IDC_IPADDRESS_GATE, m_eGATE);
 	DDX_Control(pDX, IDC_IPADDRESS_SUBNET, m_eSUBNET);
-	DDX_Control(pDX, IDC_COMBO_TRIG, m_combo_trig);
+	//DDX_Control(pDX, IDC_COMBO_TRIG, m_combo_trig);
 	DDX_Control(pDX, IDC_LIST1, listbox);
-	DDX_Control(pDX, IDC_CHECK_Gain, autogain);
-	DDX_Control(pDX, IDC_CHECK_EXPO, autoexpo);
-	DDX_Control(pDX, IDC_EDIT_TrigFreq, m_eFreq);
-	DDX_Control(pDX, IDC_EDIT_rgain, m_eRGain);
-	DDX_Control(pDX, IDC_EDIT_ggain, m_eGGain);
-	DDX_Control(pDX, IDC_EDIT_bgain, m_eBGain);
-	DDX_Control(pDX, IDC_static_imgctrl, gb_imgctrl);
-	DDX_Control(pDX, IDC_EDIT_ggain2, m_eGGain2);
+	//DDX_Control(pDX, IDC_CHECK_Gain, autogain);
+	//DDX_Control(pDX, IDC_CHECK_EXPO, autoexpo);
+	//DDX_Control(pDX, IDC_EDIT_TrigFreq, m_eFreq);
+	//DDX_Control(pDX, IDC_EDIT_rgain, m_eRGain);
+	//DDX_Control(pDX, IDC_EDIT_ggain, m_eGGain);
+	//DDX_Control(pDX, IDC_EDIT_bgain, m_eBGain);
+	//DDX_Control(pDX, IDC_static_imgctrl, gb_imgctrl);
+	//DDX_Control(pDX, IDC_EDIT_ggain2, m_eGGain2);
 	DDX_Control(pDX, IDC_EDIT_regaddr, m_eRegAddr);
 	DDX_Control(pDX, IDC_EDIT_regdata, m_eRegData);
-	DDX_Control(pDX, IDC_EDIT_camsize, m_ecamsize);
-	DDX_Control(pDX, IDC_CHECK_roienable, m_cb_roienable);
-	DDX_Control(pDX, IDC_EDIT_roixstart, m_eroixstart);
-	DDX_Control(pDX, IDC_EDIT_roixend, m_eroixend);
-	DDX_Control(pDX, IDC_EDIT_roiystart, m_eroiystart);
-	DDX_Control(pDX, IDC_EDIT_roiyend, m_eroiyend);
-	DDX_Control(pDX, IDC_CHECK_binning, m_cb_binning);
-	DDX_Control(pDX, IDC_CHECK_skip, m_cb_skip);
+	//DDX_Control(pDX, IDC_EDIT_camsize, m_ecamsize);
+	//DDX_Control(pDX, IDC_CHECK_roienable, m_cb_roienable);
+	//DDX_Control(pDX, IDC_EDIT_roixstart, m_eroixstart);
+	//DDX_Control(pDX, IDC_EDIT_roixend, m_eroixend);
+	//DDX_Control(pDX, IDC_EDIT_roiystart, m_eroiystart);
+	//DDX_Control(pDX, IDC_EDIT_roiyend, m_eroiyend);
+	//DDX_Control(pDX, IDC_CHECK_binning, m_cb_binning);
+	//DDX_Control(pDX, IDC_CHECK_skip, m_cb_skip);
 	DDX_Control(pDX, IDC_IPADDRESS_PCIP, m_ePCIp);
 	DDX_Control(pDX, IDC_IPADDRESS_PCIP2, m_ePCIp2);
 	DDX_Control(pDX, IDC_IPADDRESS_CAM3, m_eCAMIP2);
@@ -221,20 +291,24 @@ BEGIN_MESSAGE_MAP(CUsbControlDlg, CDialog)
 	ON_BN_CLICKED(btn_sendPic, &CUsbControlDlg::OnBnClickedsendpic)
 	ON_BN_CLICKED(btn_screentest, &CUsbControlDlg::OnBnClickedscreentest)
 
-	ON_BN_CLICKED(btn_connectIP, &CUsbControlDlg::OnBnClickedconnectip)
+//	ON_BN_CLICKED(btn_connectIP, &CUsbControlDlg::OnBnClickedconnectip)
 	ON_BN_CLICKED(btn_screentest3, &CUsbControlDlg::OnBnClickedscreentest3)
 	ON_BN_CLICKED(btn_connectIP2, &CUsbControlDlg::OnBnClickedconnectip2)
-END_MESSAGE_MAP()
+	ON_BN_CLICKED(btn_connectIP3, &CUsbControlDlg::OnBnClickedconnectip3)
+	ON_BN_CLICKED(btn_connectIP4, &CUsbControlDlg::OnBnClickedconnectip4)
 
+	ON_MESSAGE(WM_SHOWTASK, OnShowTask)
+END_MESSAGE_MAP()
 
 // CUsbControlDlg 消息处理程序
 BOOL CUsbControlDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
+
 	// IDM_ABOUTBOX 必须在系统命令范围内。
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
-
+	
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
 	if (pSysMenu != NULL)
 	{
@@ -248,13 +322,13 @@ BOOL CUsbControlDlg::OnInitDialog()
 			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
 		}
 	}
-
+	
 	// 设置此对话框的图标。当应用程序主窗口不是对话框时，框架将自动
 	//  执行此操作
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-
+/*
 	CRect cRect,wRect,mRect;
 	GetDesktopWindow()->GetWindowRect(wRect);
 	GetWindowRect(cRect);
@@ -263,45 +337,21 @@ BOOL CUsbControlDlg::OnInitDialog()
 	mRect.left=mRect.right-cRect.Width();
 	mRect.top=mRect.bottom-cRect.Height();
 	MoveWindow(mRect);
+	*/
+	SetWindowPos(&wndTop, 0, 0, 576, 609, SWP_NOMOVE);
 
-	m_pBrush=new CBrush[2];
+	SetTimer(3, 1, NULL);
 
-	select_channel.InsertString(0,_T("0"));
-	select_channel.InsertString(1,_T("1"));
-	select_channel.InsertString(2,_T("2"));
-	select_channel.InsertString(3,_T("3"));
-	select_channel.InsertString(4,_T("4"));
-	select_channel.InsertString(5,_T("5"));
-	select_channel.SetCurSel(0);
-	check_save_file.SetCheck(0);
 
-	m_combo_trig.InsertString(0,_T("Auto"));
-	m_combo_trig.InsertString(1,_T("Fpga Trig"));
-	m_combo_trig.InsertString(2,_T("Soft Trig"));
-	m_combo_trig.InsertString(3,_T("Out Trig"));
-	m_combo_trig.SetCurSel(0);
+	if (connServer() > 0)
+	{
+		connBoard();
+	}
+	else
+	{
+		SetDlgItemText(IDC_STATIC_TEXT, L"错误，请先打开LabView服务软件。");
+	}
 
-	m_eEXPO.SetWindowTextW(_T("300"));
-	m_eGAIN.SetWindowTextW(_T("16"));
-
-	m_ecamsize.SetWindowTextW(_T("6"));
-	
-	SetDlgItemText(IDC_EDITA, _T("152"));
-	SetDlgItemText(IDC_EDITB, _T("121"));
-	SetDlgItemText(IDC_EDITC, _T("97"));
-	SetDlgItemText(IDC_EDITMAXP, _T("200"));
-	//SetDlgItemText(IDC_EDITMAXW, _T("150"));
-	//SetDlgItemText(IDC_EDITMINW, _T("1"));
-	autogain.SetCheck(1);
-	autoexpo.SetCheck(1);
-	m_eEXPO.EnableWindow(0);
-	m_eGAIN.EnableWindow(0);
-	gb_imgctrl.EnableWindow(0);
-	m_cb_roienable.SetCheck(0);
-	m_eroixstart.EnableWindow(1);
-	m_eroixend.EnableWindow(1);
-	m_eroiystart.EnableWindow(1);
-	m_eroiyend.EnableWindow(1);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -315,6 +365,12 @@ void CUsbControlDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 	else
 	{
+		//增加关闭时最小化到托盘的函数
+		if (nID == SC_CLOSE) //SC_MINIMIZE
+		{
+			ToTray();
+			return;
+		}
 		CDialog::OnSysCommand(nID, lParam);
 	}
 }
@@ -497,6 +553,8 @@ void _stdcall RawCallBack(LPVOID lpParam, LPVOID lpUser)
 	//cv::Mat frame(dispheight, dispwidth, CV_8UC1, imgBuf);
 	//cv::imshow("disp", frame);
 	cv::Mat frame2(dispheight, dispwidth/4, CV_8UC4, imgBuf, cv::Mat::AUTO_STEP);
+	g_width = dispwidth / 4;
+	g_height = dispheight;
 	cv::imshow("disp", frame2);
 	cv::waitKey(1);
 	
@@ -523,10 +581,7 @@ void _stdcall RawCallBack(LPVOID lpParam, LPVOID lpUser)
 				} while (_waccess(strName, 0) == 0);
 				CT2CA pszConvertedAnsiString(strName);
 				std::string cvfilename(pszConvertedAnsiString);
-				offset = cameranumber * dispheight*dispwidth;
-				memcpy(imgBuf, thisFrame->imgBuf + offset, dispheight*dispwidth);
-				cv::Mat framesave(dispheight, dispwidth, CV_8UC1, imgBuf);
-				cv::imwrite(cvfilename, framesave);
+				cv::imwrite(cvfilename, frame2);
 
 			}
 		}
@@ -546,31 +601,8 @@ void _stdcall RawCallBack(LPVOID lpParam, LPVOID lpUser)
 				} while (_waccess(strName, 0) == 0);
 				CT2CA pszConvertedAnsiString(strName);
 				std::string cvfilename(pszConvertedAnsiString);
-				
-				cv::Mat framesave(thisFrame->m_height, thisFrame->m_width, CV_8UC1, thisFrame->imgBuf);
-				cv::imwrite(cvfilename, framesave);
+				cv::imwrite(cvfilename, frame2);
 
-			}
-
-			for (int cameranumber = 0; cameranumber < g_camsize; cameranumber++)
-			{
-				camFolder.Format(L"c:\\c6UDP\\cam%d", cameranumber);
-				if (CreateDirectory(camFolder, NULL) || ERROR_ALREADY_EXISTS == GetLastError())
-				{
-					int iFileIndex = 1;
-					do
-					{
-						strName.Format(L"c:\\c6UDP\\cam%d\\V_%d.bmp", cameranumber, thisFrame->timestamp);
-						++iFileIndex;
-					} while (_waccess(strName, 0) == 0);
-					CT2CA pszConvertedAnsiString(strName);
-					std::string cvfilename(pszConvertedAnsiString);
-					offset = cameranumber * dispheight*dispwidth;
-					memcpy(imgBuf, thisFrame->imgBuf + offset, dispheight*dispwidth);
-					cv::Mat framesave(dispheight, dispwidth, CV_8UC1, imgBuf);
-					cv::imwrite(cvfilename, framesave);
-
-				}
 			}
 			snap = false;
 		}
@@ -810,6 +842,7 @@ void _stdcall RawCallBack(LPVOID lpParam, LPVOID lpUser)
 	CheckRadioButton(IDC_RADIO_NORMAL, IDC_RADIO_XYMIRROR, IDC_RADIO_NORMAL);
 	SetTimer(1, 1000, NULL);
 	cv::namedWindow("disp",cv::WindowFlags::WINDOW_NORMAL);
+	OnBnClickedscreentest();
 
 	//sendSoftTrig(1);
 	//m_bmi= (BITMAPINFO*)alloca( sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD)*256);
@@ -830,6 +863,7 @@ void _stdcall RawCallBack(LPVOID lpParam, LPVOID lpUser)
 void CUsbControlDlg::OnBnClickedBtnStopcapture()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	GigEScreenStartTest(0);
 	KillTimer(1);
 	KillTimer(2);
 	if(GigEstopCap(board1)<0)
@@ -851,6 +885,8 @@ void CUsbControlDlg::OnBnClickedBtnStopcapture()
 void CUsbControlDlg::OnDestroy()
 {
 	OnBnClickedBtnClosecon();
+
+	DeleteTray();
 	CDialog::OnDestroy();
 	// TODO: 在此处添加消息处理程序代码
 	KillTimer(1);
@@ -898,15 +934,19 @@ void CUsbControlDlg::OnTimer(UINT_PTR nIDEvent)
 		unsigned int bps4 = GigEgetDataCnt(board4);
 
 #ifdef _CAM1
-		sstemp << "cam1: " << framecnttemp - lastFrameCnt << " FPS,"
+		sstemp << "cam1: " << framecnttemp - lastFrameCnt << " FPS:"
 			<< float(bps - lastDataCnt) / 1024 / 1024 << "MB/s"
 			//<< ",recv: " << recvSoftCnt << ",send: " << sendSoftCnt << ",diff: " << sendSoftCnt - recvSoftCnt
 			//<< ",ErrPack: " << GigEgetErrPackCnt(board1)
-			<< ",ImgTime:" << imgtime
+			//<< ",ImgTime:" << imgtime
+			<< " width:" << g_width
+			<<" height:"<<g_height
 				<< endl;
 
 			lastFrameCnt = framecnttemp;
 			lastDataCnt = bps;
+			g_width = 0;
+			g_height = 0;
 #endif
 #ifdef _CAM2
 			sstemp << "cam2: " << framecnttemp2 - lastFrameCnt2 << " FPS," 
@@ -960,6 +1000,10 @@ void CUsbControlDlg::OnTimer(UINT_PTR nIDEvent)
 			}
 		}
 		break;
+	case 3:
+		ToTray();
+		KillTimer(3);
+		ShowWindow(SW_HIDE);
 	default:
 		break;
 	}
@@ -1245,7 +1289,7 @@ void CUsbControlDlg::OnBnClickedBtnConnect()
 		{
 			str.Format(L"Device connected");
 			SetDlgItemText(IDC_STATIC_TEXT, str);
-			gb_imgctrl.EnableWindow(1);
+			//gb_imgctrl.EnableWindow(1);
 
 		}
 		else
@@ -1341,7 +1385,7 @@ void CUsbControlDlg::OnBnClickedBtnSearch()
 
 void CUsbControlDlg::OnBnClickedBtnClosecon()
 {
-	gb_imgctrl.EnableWindow(0);
+	//gb_imgctrl.EnableWindow(0);
 	OnBnClickedBtnStopcapture();
 	GigEcloseConnection(board1);
 	GigEcloseConnection(board2);
@@ -1782,9 +1826,9 @@ void CUsbControlDlg::OnBnClickedsendpic()
 	//std::string strStd(pszConvertedAnsiString);
 
 	std::string strStd[10];
-	strStd[0] = "Q:\\github\\YFGigeE\\Discovery\\testimg\\1920_1.bmp";
-	strStd[1] = "Q:\\github\\YFGigeE\\Discovery\\testimg\\1920_2.png";
-	strStd[2] = "Q:\\github\\YFGigeE\\Discovery\\testimg\\1920_3.jpg";
+	strStd[0] = "Q:\\github\\YFGige\\Discovery\\testimg\\1920_1.bmp";
+	strStd[1] = "Q:\\github\\YFGige\\Discovery\\testimg\\1920_2.png";
+	strStd[2] = "Q:\\github\\YFGige\\Discovery\\testimg\\1920_3.jpg";
 
 	
 	GigESendFile(strStd, 3);
@@ -1818,18 +1862,12 @@ void CUsbControlDlg::OnBnClickedsendpic()
 
 void CUsbControlDlg::OnBnClickedscreentest()
 {
+	GigeSendARP("192.168.2.10");
 	GigEScreenStartTest(1);
 	GigEScreenGrabOneFrame(1);
 
-
 }
 
-
-void CUsbControlDlg::OnBnClickedconnectip()
-{
-	int rst=GigEConnectIP("192.168.2.10","192.168.2.12");
-	//GigEConnectIP();
-}
 
 
 void CUsbControlDlg::OnBnClickedscreentest3()
@@ -1841,4 +1879,27 @@ void CUsbControlDlg::OnBnClickedscreentest3()
 void CUsbControlDlg::OnBnClickedconnectip2()
 {
 	connServer();
+}
+
+
+void CUsbControlDlg::OnBnClickedconnectip3()
+{
+	closeConn();
+}
+
+
+void CUsbControlDlg::OnBnClickedconnectip4()
+{
+	connBoard();
+}
+
+
+void CUsbControlDlg::OnEnChangeRichedit21()
+{
+	// TODO:  如果该控件是 RICHEDIT 控件，它将不
+	// 发送此通知，除非重写 CDialog::OnInitDialog()
+	// 函数并调用 CRichEditCtrl().SetEventMask()，
+	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
+
+	// TODO:  在此添加控件通知处理程序代码
 }

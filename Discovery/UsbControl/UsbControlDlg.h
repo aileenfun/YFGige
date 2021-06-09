@@ -11,6 +11,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
 #include "MACAddrEdit.h"
 #include "afxcmn.h"
 #include "atlbase.h"  
@@ -178,4 +179,11 @@ public:
 	afx_msg void OnBnClickedconnectip();
 	afx_msg void OnBnClickedscreentest3();
 	afx_msg void OnBnClickedconnectip2();
+	afx_msg void OnBnClickedconnectip3();
+	afx_msg void OnBnClickedconnectip4();
+	afx_msg void OnEnChangeRichedit21();
+
+	afx_msg LRESULT  OnShowTask(WPARAM wParam, LPARAM lParam);
+	void DeleteTray();
+	void ToTray(void);
 };

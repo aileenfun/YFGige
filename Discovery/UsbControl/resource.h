@@ -116,6 +116,8 @@
 #define btn_connectIP                   1075
 #define btn_screentest3                 1076
 #define btn_connectIP2                  1077
+#define btn_connectIP3                  1078
+#define btn_connectIP4                  1079
 
 // Next default values for new objects
 // 
@@ -123,7 +125,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        132
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1071
+#define _APS_NEXT_CONTROL_VALUE         1072
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

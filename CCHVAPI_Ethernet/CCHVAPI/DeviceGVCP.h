@@ -32,6 +32,7 @@ public:
 	//MVComponent::Address clientAddr;
 	std::string hostaddr;
 	std::string camerakey;
+	std::string str_camIP;
 	CCHCamera()
 	{
 		CamInfo = new MV_CC_DEVICE_INFO();

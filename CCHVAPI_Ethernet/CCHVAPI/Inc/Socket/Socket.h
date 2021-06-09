@@ -229,7 +229,7 @@ class TCP : public CommonSocket
     Address GetAddress(void);
 
     void ListenOnPort(Port, unsigned int listeners = 1);
-    void ConnectTo(Address);
+    int ConnectTo(Address);
 
     TCP AcceptClient(void);
 

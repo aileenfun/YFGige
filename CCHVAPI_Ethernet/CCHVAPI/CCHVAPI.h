@@ -83,6 +83,7 @@ private:
 public :
 	int b_connected;
 public:
+	
 	GigEcamInstance(LPVOID*lp,LPMV_CALLBACK2 CallBackFunc):m_DeviceGVCP()
 	{
 		m_pDataProcess=new GigECDataProcess(queue,lp);
@@ -126,6 +127,10 @@ public:
 		if (m_pDataCapture != NULL)
 		delete m_pDataCapture;*/
 	}
+	string GigEGetCamIP()
+	{
+		return devprop->str_camIP;
+	}
 	int initEth(CCHCamera *c,bool recv_thread=1)
 	{
 		if(b_connected ==1)//already opened
@@ -151,6 +156,8 @@ public:
 			 }
 
 				 devprop->pcIP = inet_addr(c->hostaddr.c_str());
+				 devprop->str_pcIP = c->hostaddr;		
+				 devprop->str_camIP = c->str_camIP;
 				 uint32_t readdata;
 				 int rst = ReadReg(0x0024, &readdata);//camip
 				 if (rst<0)
@@ -246,14 +253,20 @@ public:
 				sendbuff[15] = 0xDE;
 				if (i == totalPack)
 					copylen = residue;
+				for (int j = 0; j < 8; j++)
+				{
+
+				}
 				memcpy(sendbuff + 16, buff + (i - 1) * 8176, copylen);
-				//m_pDataCapture->sendFile(sendbuff, 8192, totalPack);
+				camins->m_pDataCapture->sendFile(sendbuff, 8192, totalPack);
+				//Sleep(1);
 				int packOK = 0;
 				int retry = 0;
 				int retrylimit = 20;
+				/*
 				do
 				{
-					camins->m_pDataCapture->sendFile(sendbuff, 8192, totalPack);
+					
 
 					camGetPack = 0;
 
@@ -301,10 +314,11 @@ public:
 					printf("%d", i);
 				}
 				//Sleep(1);
+				*/
 			}
 
 			//m_DeviceGVCP.WriteReg(REG_SENDING_IMG_START, 0);
-
+			
 			camins->m_DeviceGVCP.WriteReg(REG_SWITCH_SENDING_IMG_MODE, 0);
 
 			//m_pDataCapture->closeUDP();
@@ -465,10 +479,12 @@ public:
 	map_camera searchCamera(map_camera *camlist)
 	{
 		//m_DeviceGVCP.Discovery();
+		m_DeviceGVCP.cameralist.clear();
 		CCHCamera*devinfo = new CCHCamera();
 		devinfo->hostaddr = "0.0.0.0";
 		initEth(devinfo, 0);//should not be used, just use getinterface. 
 		m_DeviceGVCP.getInterface();
+		
 		*camlist = m_DeviceGVCP.cameralist;
 		delete devinfo;
 		return m_DeviceGVCP.cameralist;
@@ -767,11 +783,18 @@ CCT_API int GigECamOutPutImgNum(uint32_t s,uint32_t img_num, int camnum = 1);
 CCT_API int GigECamOutPutResolu(uint32_t w,uint32_t s, int camnum = 1);
 CCT_API int GigECamRdCamVolt(uint32_t which,uint32_t *v, int camnum = 1);
 CCT_API int GigESendFile(string filenames[10],int filecnt,int camnum=1);
-CCT_API int GigEScreenStartTest(int s);
-//CCT_API int GigEConnectIP(std::string hostIP, std::string clientIP );
-CCT_API  unsigned char* GigEScreenGrabOneFrame(int ins);
+CCT_API int GigEScreenStartTest(int s,int board=1);
+CCT_API  unsigned char* GigEScreenGrabOneFrame(int ins,int board=1);
+
 CCT_API int GigEConnectIP(std::string hostIP, std::string clientIP);
 CCT_API int testIPString(char* hostIP,char* clientIP);
-CCT_API int testDefaultIP();
+
 CCT_API int connServer();
+CCT_API int connBoard();
+CCT_API int closeConn();
 int sendImgTcp();
+CCT_API int GigeSendARP(string destIP, string hostIP="192.168.2.12");
+CCT_API  unsigned char* GigEScreenGrabOneFrameDLL(int ins, int board, int& width, int& height);
+CCT_API int connectDevice1DLL();
+CCT_API int  screenTest1DLL();
+CCT_API int disconnDevice1DLL();

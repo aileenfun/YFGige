@@ -689,7 +689,7 @@ void TCP::ListenOnPort(Port port, unsigned int listeners)
     this->_clients.clear();
 }
 
-void TCP::ConnectTo(Address address)
+int TCP::ConnectTo(Address address)
 {
     if (!this->_opened) this->Open();
 
@@ -697,7 +697,8 @@ void TCP::ConnectTo(Address address)
     {
         std::stringstream error;
         error << "[connect_to] with [address=" << address << "] Cannot connect to the specified address";
-        throw SocketException(error.str());
+        //throw SocketException(error.str());
+        return -1;
     }
 
     this->_binded = true;
