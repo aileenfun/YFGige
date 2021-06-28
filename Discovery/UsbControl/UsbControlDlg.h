@@ -186,4 +186,9 @@ public:
 	afx_msg LRESULT  OnShowTask(WPARAM wParam, LPARAM lParam);
 	void DeleteTray();
 	void ToTray(void);
+	afx_msg void OnBnClickedcmddll2();
+	afx_msg void OnBnClickedcmddll();
+	afx_msg void OnBnClickedcnndll();
+	afx_msg void OnBnClickedsendpic2();
+	afx_msg void OnBnClickedtouchdll();
 };

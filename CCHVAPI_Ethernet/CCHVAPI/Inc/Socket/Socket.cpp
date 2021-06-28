@@ -860,7 +860,7 @@ int TCP::ReceiveTimeout(unsigned int ms, T* buffer, size_t len)
     // error
     if (ready == SOCKET_ERROR || ready < 0)
     {
-        throw SocketException("[receive_timeout] select() return SOCKET_ERROR");
+        //throw SocketException("[receive_timeout] select() return SOCKET_ERROR");
     }
 
     // timeout

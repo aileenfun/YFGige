@@ -616,23 +616,33 @@ int DeviceGVCP::ReadRegDone()
 }
 int DeviceGVCP::WriteReg(unsigned int addr, unsigned int data)
 {
+	int retry = 3;
+	int rst = 1;
 	try
 	{
-		WriteRegCmd(addr, data);
-		if ((addr >= 0x064C && addr <= 0x066C)||(addr>=0x33CC0000&&addr<=0x33CC07FF))
-		{//IP address and EE range
-			//EEROM need more time to delay
-			Sleep(50);
-		}
-		else
+		while (retry > 0)
 		{
-			Sleep(1);
+			WriteRegCmd(addr, data);
+			if ((addr >= 0x064C && addr <= 0x066C) || (addr >= 0x33CC0000 && addr <= 0x33CC07FF))
+			{//IP address and EE range
+				//EEROM need more time to delay
+				Sleep(50);
+			}
+			else
+			{
+				Sleep(1);
+			}
+			if (WriteRegDone() == -1)
+			{
+				//return -1;
+			}
+			else
+			{
+				break;
+			}
+			retry--;
 		}
-		if (WriteRegDone() == -1)
-		{
-			return -1;
-		}
-		return 1;
+		return rst;
 	}
 	catch (SocketException& SktEx)
 	{

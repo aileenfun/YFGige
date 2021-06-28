@@ -110,14 +110,19 @@
 #define btn_test                        1070
 #define IDC_BTN_TRIG2                   1071
 #define btn_resolu                      1072
-#define btn_sendPic                     1073
+#define btn_cnndll                      1073
 #define btn_screentest                  1074
 #define btn_screentest2                 1075
 #define btn_connectIP                   1075
+#define btn_sendPic2                    1075
 #define btn_screentest3                 1076
 #define btn_connectIP2                  1077
 #define btn_connectIP3                  1078
 #define btn_connectIP4                  1079
+#define btn_cmddll                      1080
+#define btn_cmddll2                     1081
+#define btn_cmddll3                     1082
+#define btn_touchdll                    1082
 
 // Next default values for new objects
 // 

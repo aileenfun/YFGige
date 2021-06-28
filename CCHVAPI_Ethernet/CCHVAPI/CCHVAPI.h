@@ -21,9 +21,6 @@
 #include "VirtualDevice.h"
 #include <vector>
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
 
 
 #define REG_SCREEN_CAP_CTRL 0x33bb0000
@@ -35,6 +32,8 @@
 #define REG_SCREEN_SEND_OFFSET 0x33bb0018
 #define REG_SCREEN_INT_CTRL 0x33bb001C
 #define REG_SCREEN_LINK_STATUS 0x33bb0020
+#define REG_SCREEN_RES_SET_EN 0x33bb0024
+#define REG_SCREEN_RES_OVERRIDE 0x33bb0028
 
 #define REG_CAM_OUTPUT_MODE 0x33bb0040
 #define REG_CAM_OUTPUT_EN 0x33bb0044
@@ -205,7 +204,7 @@ public:
 	}
 	static ThreadReturnType MV_STDCALL  sendFileProcess(void *arg)
 	{
-		
+#ifdef OPENCV
 		GigEcamInstance* camins = (GigEcamInstance*)arg;
 		for (int k = 0; k < camins->sendfileinfo.filecnt; k++)
 		{
@@ -323,9 +322,9 @@ public:
 
 			//m_pDataCapture->closeUDP();
 		}
-		
+#endif
 		return 1;
-		
+
 	}
 	int sendFile(string filenames[10],int filecnt)
 	{
@@ -786,7 +785,7 @@ CCT_API int GigESendFile(string filenames[10],int filecnt,int camnum=1);
 CCT_API int GigEScreenStartTest(int s,int board=1);
 CCT_API  unsigned char* GigEScreenGrabOneFrame(int ins,int board=1);
 
-CCT_API int GigEConnectIP(std::string hostIP, std::string clientIP);
+CCT_API int GigEConnectIP(std::string hostIP, std::string clientIP,int height=0,int width=0);
 CCT_API int testIPString(char* hostIP,char* clientIP);
 
 CCT_API int connServer();
@@ -794,7 +793,9 @@ CCT_API int connBoard();
 CCT_API int closeConn();
 int sendImgTcp();
 CCT_API int GigeSendARP(string destIP, string hostIP="192.168.2.12");
-CCT_API  unsigned char* GigEScreenGrabOneFrameDLL(int ins, int board, int& width, int& height);
-CCT_API int connectDevice1DLL();
-CCT_API int  screenTest1DLL();
+CCT_API  int  GigEScreenGrabOneFrameDLL(int Ins, int board, int& width, int& height, unsigned char * buff);
+CCT_API int connectDevice1DLL(int s=1,int height=0,int width=0);
+CCT_API int  screenTest1DLL(int s=1);
 CCT_API int disconnDevice1DLL();
+CCT_API int touchTest1DLL(int value, int s);
+CCT_API int GigEScreenResSet(int height,int width,int board);

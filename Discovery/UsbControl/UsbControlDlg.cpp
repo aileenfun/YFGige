@@ -49,7 +49,7 @@ unsigned long lastLostCnt=0;
 int f_softtirg=0;
 int f_hardtrig = 0;
 unsigned int g_camsize = 1;
-
+unsigned char memptr[1920 * 1080 * 4];
 #define  WM_SHOWTASK (WM_USER + 1)
 
 class CAboutDlg : public CDialog
@@ -288,7 +288,6 @@ BEGIN_MESSAGE_MAP(CUsbControlDlg, CDialog)
 	ON_BN_CLICKED(IDC_BTN_TRIG2, &CUsbControlDlg::OnBnClickedBtnTrig2)
 
 	ON_BN_CLICKED(btn_resolu, &CUsbControlDlg::OnBnClickedresolu)
-	ON_BN_CLICKED(btn_sendPic, &CUsbControlDlg::OnBnClickedsendpic)
 	ON_BN_CLICKED(btn_screentest, &CUsbControlDlg::OnBnClickedscreentest)
 
 //	ON_BN_CLICKED(btn_connectIP, &CUsbControlDlg::OnBnClickedconnectip)
@@ -297,7 +296,12 @@ BEGIN_MESSAGE_MAP(CUsbControlDlg, CDialog)
 	ON_BN_CLICKED(btn_connectIP3, &CUsbControlDlg::OnBnClickedconnectip3)
 	ON_BN_CLICKED(btn_connectIP4, &CUsbControlDlg::OnBnClickedconnectip4)
 
-	ON_MESSAGE(WM_SHOWTASK, OnShowTask)
+	//ON_MESSAGE(WM_SHOWTASK, OnShowTask)
+	ON_BN_CLICKED(btn_cmddll2, &CUsbControlDlg::OnBnClickedcmddll2)
+	ON_BN_CLICKED(btn_cmddll, &CUsbControlDlg::OnBnClickedcmddll)
+	ON_BN_CLICKED(btn_cnndll, &CUsbControlDlg::OnBnClickedcnndll)
+	ON_BN_CLICKED(btn_sendPic2, &CUsbControlDlg::OnBnClickedsendpic2)
+	ON_BN_CLICKED(btn_touchdll, &CUsbControlDlg::OnBnClickedtouchdll)
 END_MESSAGE_MAP()
 
 // CUsbControlDlg 消息处理程序
@@ -338,11 +342,11 @@ BOOL CUsbControlDlg::OnInitDialog()
 	mRect.top=mRect.bottom-cRect.Height();
 	MoveWindow(mRect);
 	*/
-	SetWindowPos(&wndTop, 0, 0, 576, 609, SWP_NOMOVE);
+	SetWindowPos(&wndTop, 0, 0, 576, 700, SWP_NOMOVE);
 
 	SetTimer(3, 1, NULL);
 
-
+	/*
 	if (connServer() > 0)
 	{
 		connBoard();
@@ -351,7 +355,7 @@ BOOL CUsbControlDlg::OnInitDialog()
 	{
 		SetDlgItemText(IDC_STATIC_TEXT, L"错误，请先打开LabView服务软件。");
 	}
-
+	*/
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -366,11 +370,11 @@ void CUsbControlDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	else
 	{
 		//增加关闭时最小化到托盘的函数
-		if (nID == SC_CLOSE) //SC_MINIMIZE
-		{
-			ToTray();
-			return;
-		}
+		//if (nID == SC_CLOSE) //SC_MINIMIZE
+		//{
+			//ToTray();
+			//return;
+		//}
 		CDialog::OnSysCommand(nID, lParam);
 	}
 }
@@ -841,7 +845,7 @@ void _stdcall RawCallBack(LPVOID lpParam, LPVOID lpUser)
 	SetDlgItemText(IDC_STATIC_TEXT, L"采集中...");
 	CheckRadioButton(IDC_RADIO_NORMAL, IDC_RADIO_XYMIRROR, IDC_RADIO_NORMAL);
 	SetTimer(1, 1000, NULL);
-	cv::namedWindow("disp",cv::WindowFlags::WINDOW_NORMAL);
+	cv::namedWindow("disp",cv::WINDOW_NORMAL);
 	OnBnClickedscreentest();
 
 	//sendSoftTrig(1);
@@ -1001,9 +1005,9 @@ void CUsbControlDlg::OnTimer(UINT_PTR nIDEvent)
 		}
 		break;
 	case 3:
-		ToTray();
-		KillTimer(3);
-		ShowWindow(SW_HIDE);
+		//ToTray();
+		//KillTimer(3);
+		//ShowWindow(SW_HIDE);
 	default:
 		break;
 	}
@@ -1902,4 +1906,45 @@ void CUsbControlDlg::OnEnChangeRichedit21()
 	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
 
 	// TODO:  在此添加控件通知处理程序代码
+}
+
+
+void CUsbControlDlg::OnBnClickedcmddll2()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	unsigned char memptr[1920 * 1080 * 4];
+	int height = 0;
+	int width = 0;
+	int rst = GigEScreenGrabOneFrameDLL(0,0,width,height, memptr);
+	cv::Mat frame2(height, width / 4, CV_8UC4, memptr, cv::Mat::AUTO_STEP);
+	cv::imshow("frame2", frame2);
+	cv::waitKey(0);
+}
+
+
+void CUsbControlDlg::OnBnClickedcmddll()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	screenTest1DLL();
+}
+
+
+void CUsbControlDlg::OnBnClickedcnndll()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	int rst=connectDevice1DLL(1,480,1920);
+}
+
+
+void CUsbControlDlg::OnBnClickedsendpic2()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CUsbControlDlg::OnBnClickedtouchdll()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	//touchTest1DLL(1, 1);
+	GigEScreenResSet(480, 1920, 1);
 }

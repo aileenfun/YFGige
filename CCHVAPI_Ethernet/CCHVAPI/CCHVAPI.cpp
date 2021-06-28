@@ -34,8 +34,8 @@ MVComponent::TCP tcpSkt;
 int tcpRunning = 0;
 int tcpBoard = 0;
 #define HOST_IP "192.168.2.12"
-#define HUD_948_IP "192.168.2.10"
-#define DASH_948_IP "192.168.2.11"
+#define HUD_948_IP_10 "192.168.2.10"
+#define DASH_948_IP_11 "192.168.2.11"
 #define CAM_933_IP "192.168.2.9"
 #define LABVIEW_SERVER_PORT 6340
 #define HUD_948_ID 1
@@ -120,11 +120,14 @@ void _stdcall  Disp(LPVOID lpParam, LPVOID lpUser)
 		long lvbufflen = g_iWidth * g_iHeight;
 		memset(grabframebuff, 0, lvbufflen);
 		long idx_LV = 0;
+		//RGBA
+		memcpy(grabframebuff, thisFrame->imgBuf, lvbufflen);
+		
 		for (int i = 0; i < lvbufflen; i = i + 4)
 		{//ABGR                        RGBA
-			*(grabframebuff+idx_LV+1)=*(thisFrame->imgBuf + i +2);
-			*(grabframebuff + idx_LV + 2) = *(thisFrame->imgBuf + i + 1);
-			*(grabframebuff + idx_LV + 3) = *(thisFrame->imgBuf + i + 0);
+			//*(grabframebuff+idx_LV+1)=*(thisFrame->imgBuf + i +2);
+			//*(grabframebuff + idx_LV + 2) = *(thisFrame->imgBuf + i + 1);
+			//*(grabframebuff + idx_LV + 3) = *(thisFrame->imgBuf + i + 0);
 			//BGRA
 			//*(grabframebuff + idx_LV) = *(thisFrame->imgBuf + i + 2);
 			//*(grabframebuff + idx_LV + 1) = *(thisFrame->imgBuf + i + 1);
@@ -708,7 +711,7 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 	 return vec_camins[camNum]->sendFile(filenames, filecnt);
  }
 
- int GigEConnectIP(std::string hostIP, std::string clientIP)
+ int GigEConnectIP(std::string hostIP, std::string clientIP,int height,int width)
  //int GigEConnectIP()
  {
 	 unsigned long long temp = htonl(inet_addr(clientIP.c_str()));
@@ -722,7 +725,7 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 	 {
 		 if(grabframebuff==NULL)
 		 grabframebuff = new unsigned char[1080 * 1920 * 4];
-
+		 GigEScreenResSet(height, width, rst);
 		 GigEstartCap(rst);
 		 Sleep(2000);
 		 GigEScreenStartTest(1,rst);
@@ -748,10 +751,24 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 	 }
 	 return 1;
  }
-
+ int GigEScreenResSet(int height, int width, int board)
+ {
+	 if (height > 0)
+	 {
+		 unsigned long temp = height;
+		 temp = temp << 16;
+		 temp = temp + width;
+		 GigEWriteReg(REG_SCREEN_RES_SET_EN, 1, board);
+		 return GigEWriteReg(REG_SCREEN_RES_OVERRIDE, temp, board);
+	 }
+	 else
+	 {
+		 GigEWriteReg(REG_SCREEN_RES_SET_EN, 0, board);
+	 }
+ }
  unsigned char* GigEScreenGrabOneFrame(int Ins,int board)
  {
-	 f_grabframe = 1;
+	// f_grabframe = 1;
 	 unsigned long count = 0;
 	 FrameCnt++;
 	 while (count < 50)
@@ -771,22 +788,28 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 	 }
 	 return NULL;
  }
- unsigned char* GigEScreenGrabOneFrameDLL(int Ins,int board,int& width, int& height)
+int  GigEScreenGrabOneFrameDLL(int Ins,int board,int& width, int& height,unsigned char *buff)
  {
-	 unsigned char *temp=GigEScreenGrabOneFrame(Ins, board);
+	
+	unsigned char* temp=GigEScreenGrabOneFrame(Ins, board);
+	
 	 if (temp != NULL)
 	 {
 		 width = g_iWidth;
 		 height = g_iHeight;
-		 
+		 memcpy(buff, grabframebuff, width * height);
+		/* for (int i = 0; i < width * height; i++)
+		 {
+			 buff[i] = grabframebuff[i];
+		 }*/
 	 }
 	 else
 	 {
 		 width = 0;
 		 height = 0;
 	 }
-
-	 return temp;
+	 return width;
+	 
  }
  int testIPString(char* c_hostIP, char* c_clientIP)
  {
@@ -802,13 +825,18 @@ int GigECamOutPutMode(uint32_t s, int camNum)
  {
 	 const int cmdLen = 7;
 	 char buff[cmdLen];
-
+	 unsigned char* temp = NULL;
 
 	 while (tcpRunning)
 	 {
 		 memset(buff, 0, cmdLen);
-		 int rst= tcpSkt.Receive(buff, cmdLen);
-		 
+		// int rst= tcpSkt.ReceiveTimeout(1000,buff, cmdLen);
+		 int rst = tcpSkt.Receive( buff, cmdLen);
+		 if (rst <= 0)
+		 {
+			 Sleep(10);
+			 continue;
+		 }
 		 char head = buff[0];
 		 char board = buff[1];
 		 char cmd = buff[2];
@@ -828,7 +856,11 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 				 {
 				 case 1:
 					 GigEScreenStartTest(1,board);
-					 GigEScreenGrabOneFrame(1,board);
+					 temp=GigEScreenGrabOneFrame(1,board);
+					 if (temp == NULL)
+					 {
+						 GigEScreenStartTest(1, board);
+					 }
 					 break;
 				 case 2:
 					 GigEScreenStartTest(0,board);
@@ -858,7 +890,7 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 
 					 break;
 				 }
-			 }//board 1 2
+			 }//end of board 1 2
 			 else if (board == 3)
 			 {
 				 switch (cmd)
@@ -889,7 +921,7 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 			 }
 			
 		 }//head==0x55
-		 Sleep(1000);
+		// 
 		
 	 }
 	 return 1;
@@ -898,15 +930,17 @@ int GigECamOutPutMode(uint32_t s, int camNum)
  {
 	 if (tcpRunning == 1)
 		 return -1;
-	 tcpRunning = 1;
+
 	 MVComponent::Address tcpaddr;
 	 tcpaddr.SetAddressIp("127.0.0.1");
 	 //tcpaddr.SetAddressIp("192.168.2.10");
 	 tcpaddr.SetAddressPort(LABVIEW_SERVER_PORT);
 	 if(tcpSkt.ConnectTo(tcpaddr)<0)
 	 {
+
 		 return -1;
 	 }
+	 tcpRunning = 1;
 	 void* _pThreadTcpCmd = MV_CreateThread(MV_NULL, tcpCommand, (LPVOID)NULL);
 	 int rst;
 	 if (_pThreadTcpCmd == MV_NULL)
@@ -920,21 +954,42 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 	 tcpSkt.Close();
 	 return 1;
  }
- int connectDevice1DLL()
+ int connectDevice1DLL(int s,int height,int width)
  {
-	 GigeSendARP(DASH_948_IP);
-	 int rst = GigEConnectIP(HOST_IP, DASH_948_IP);
-	 if (rst == 1)
+	 if (s == 1)
 	 {
 
-		 GigEScreenStartTest(1, 1);
-		 GigEScreenGrabOneFrame(1, 1);
+		 GigeSendARP(HUD_948_IP_10);
+		 int rst = GigEConnectIP(HOST_IP, HUD_948_IP_10,height,width);
+		 if (rst >0)
+		 {
 
+			 GigEScreenStartTest(1, 2);
+			 GigEScreenGrabOneFrame(1, 2);
+
+		 }
+		 else
+		 {
+			 rst = GigEConnectIP(HOST_IP, HUD_948_IP_10,height,width);
+			 if (rst >0)
+			 {
+
+				 GigEScreenStartTest(1, 2);
+				 GigEScreenGrabOneFrame(1, 2);
+
+			 }
+			 else
+			 {
+				 return -1;
+			 }
+		 }
 	 }
-	 else
+	 else if(s==2)
 	 {
-		 rst = GigEConnectIP(HOST_IP, DASH_948_IP);
-		 if (rst == 1)
+
+		 GigeSendARP(DASH_948_IP_11);
+		 int rst = GigEConnectIP(HOST_IP, DASH_948_IP_11, height, width);
+		 if (rst > 0)
 		 {
 
 			 GigEScreenStartTest(1, 1);
@@ -943,15 +998,51 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 		 }
 		 else
 		 {
-			 return -1;
+			 rst = GigEConnectIP(HOST_IP, DASH_948_IP_11, height, width);
+			 if (rst > 0)
+			 {
+
+				 GigEScreenStartTest(1, 1);
+				 GigEScreenGrabOneFrame(1, 1);
+
+			 }
+			 else
+			 {
+				 return -1;
+			 }
 		 }
+
 	 }
+	 return 1;
  }
- int screenTest1DLL()
+ int touchTest1DLL(int value, int s)
  {
-	 GigeSendARP(DASH_948_IP);
-	 GigEScreenStartTest(1, 1);
-	 GigEScreenGrabOneFrame(1, 1);
+	 if (s == 1)
+	 {
+		 return GigEScreenINTCtrl(value, 1);
+	 }
+	 else
+	 {
+		 return GigEScreenINTCtrl(value, 2);
+	 }
+	 
+ }
+ int screenTest1DLL(int s)
+ {
+	unsigned  char* temp = NULL;
+	 if (s == 1)
+	 {
+		 GigeSendARP(HUD_948_IP_10);
+		 GigEScreenStartTest(1, 1);
+		
+	 }
+	 else if(s==2)
+	 {
+		 GigeSendARP(DASH_948_IP_11);
+		 GigEScreenStartTest(1, 2);
+		
+	 }
+	 //GigEScreenGrabOneFrame(1, 1);
 	 return 1;
  }
  int disconnDevice1DLL()
@@ -965,8 +1056,8 @@ int GigECamOutPutMode(uint32_t s, int camNum)
  {
 	 f_sendTCP = 0;
 	 char buff[7] = { 0 };
-	 GigeSendARP(HUD_948_IP);
-	 int rst=GigEConnectIP(HOST_IP, HUD_948_IP);
+	 GigeSendARP(HUD_948_IP_10);
+	 int rst=GigEConnectIP(HOST_IP, HUD_948_IP_10);
 	 buff[0] = 0x55;
 	 buff[1] = 0x01;
 	 if (rst == 1)
@@ -980,7 +1071,7 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 	 }
 	 else
 	 {
-		 rst = GigEConnectIP(HOST_IP, HUD_948_IP);
+		 rst = GigEConnectIP(HOST_IP, HUD_948_IP_10);
 
 		 buff[0] = 0x55;
 		 buff[1] = 0x01;
@@ -998,11 +1089,11 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 			 buff[6] = 0x00;
 		 }
 	 }
-	 tcpSkt.Send(buff, 7);
+	//tcpSkt.Send(buff, 7);
 	 //Connect DASH
-	 /*
-	 GigeSendARP(DASH_948_IP);
-	 rst = GigEConnectIP(HOST_IP, DASH_948_IP);
+#ifdef DASH_948_IP_11
+	 GigeSendARP(DASH_948_IP_11);
+	 rst = GigEConnectIP(HOST_IP, DASH_948_IP_11);
 	 buff[1] = 0x02;
 	 if(rst==2)
 	 {
@@ -1014,7 +1105,7 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 	 else
 	 {
 		
-		 rst = GigEConnectIP(HOST_IP, DASH_948_IP);
+		 rst = GigEConnectIP(HOST_IP, DASH_948_IP_11);
 		 if (rst == 2)
 		 {
 			 f_sendTCP = 0;
@@ -1028,9 +1119,10 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 		 }
 
 	 }
-	 */
-	 tcpSkt.Send(buff, 7);
-	 //f_sendTCP = 1;
+	 //tcpSkt.Send(buff, 7);
+#endif
+	 Sleep(3000);
+	 f_sendTCP = 1;
 	 return rst;
 	 
  }
@@ -1054,12 +1146,14 @@ int GigECamOutPutMode(uint32_t s, int camNum)
 		 buff[5] = g_iHeight >> 8;
 		 buff[6] = g_iHeight & 0xff;
 
-		 tcpSkt.Send(buff, 7);
+		 
 
 		 if (f_sendTCP == 1)
-		 tcpSkt.Send((char*)grabframebuff, g_iWidth * g_iHeight);
-
+		 {
+			 tcpSkt.Send(buff, 7);
+			 tcpSkt.Send((char*)grabframebuff, g_iWidth * g_iHeight);
+		 }
 	 }
-	 f_grabframe = 3;
+	 //f_grabframe = 3;
 	 return 1;
  }

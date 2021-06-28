@@ -200,13 +200,13 @@ int GigECDataCapture::initUDP(MVComponent::UDP up, MVComponent::Address addr)
 	struct timeval tv_out;
 	tv_out.tv_sec = 5;
 	tv_out.tv_usec = 0;
-	int timeout = 100;
+	int timeout = 3000;
 	if (setsockopt(socketSrv, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(tv_out)) == -1)
 	{
 		printf("set timeout error");
 		exit(EXIT_FAILURE);
 	}
-
+	
 	return port;
 }
 
@@ -250,7 +250,7 @@ void GigECDataCapture::get_udp_data()
 			udp_queue.add(this_udpbuffer);
 		}
 #else
-		//sendto(socketSrv,tempbuf,10,0,(struct sockaddr*)&addrClient,sizeof(struct sockaddr));
+		
 
 		nRet = recvfrom(socketSrv, (char*)recv_buf, PACKSIZE, 0, (struct sockaddr*)&client_addr1, &cliaddr_len);
 		//unsigned int len = PACKSIZE;
@@ -392,6 +392,16 @@ void GigECDataCapture::get_udp_data()
 		}
 		else
 		{
+			if (nRet != -1)
+			{
+				cout << nRet << endl;
+			}
+			unsigned long dw = WSAGetLastError();
+			if (dw != 10060)
+			{
+				printf("%d\n", dw);
+			}
+			sendto(socketSrv, recv_buf, 10, 0, (struct sockaddr*)&client_addr1, sizeof(struct sockaddr));
 			Sleep(1);
 		}
 #endif
